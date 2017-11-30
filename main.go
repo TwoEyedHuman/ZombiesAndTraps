@@ -68,9 +68,22 @@ type intVec struct {
 	Y int
 }
 
+func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
+	xmlMapStructure, err := os.Open(mapStructureFile)
+	if err != nul {
+		fmt.Println(err)
+	}
+
+	defer xmlMapStructure.Close()
+
+	byteValue, _ := ioutil.ReadAll(xmlMapStructure)
+	xml.Unmarshal(byteValue, &returnMap)
+}
+
 func run() {
 	//Load the map into a structure
-	gameMap := loadMap(
+	gameMap := loadMap("map/bar_Image.png", "map/bar.json")
+
 	//Initialize items, zombies, player
 
 	//Launch program
