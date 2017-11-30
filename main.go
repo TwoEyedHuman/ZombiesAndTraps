@@ -48,9 +48,29 @@ type property struct { //each map and layer has a set of properties that it can 
 	Collision bool
 }
 
+type entity struct { //players and NPC
+	name string
+	sprite *pixel.Sprite
+	pos intVec
+	facing intVec
+	health int
+	pack []item
+}
+
+type item struct {
+	sprite *pixel.Sprite
+	pos intVec
+	health int
+}
+
+type intVec struct {
+	X int
+	Y int
+}
+
 func run() {
 	//Load the map into a structure
-
+	gameMap := loadMap(
 	//Initialize items, zombies, player
 
 	//Launch program
