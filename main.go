@@ -28,6 +28,7 @@ type mapObject struct { //object that holds the properties of the map itself
 	Type string `json:"type"`
 	Version int `json:"version"`
 	Width int `json:"width"`
+	sprite *pixel.Sprite
 }
 
 type mapLayer struct { //each map has an associated layer
@@ -68,6 +69,19 @@ type intVec struct {
 	Y int
 }
 
+func loadPicture(path string) (pixel.Picture, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return nil, err
+	}
+	return pixel.PictureDataFromImage(img), nil
+}
+
 func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
 	xmlMapStructure, err := os.Open(mapStructureFile)
 	if err != nul {
@@ -78,6 +92,12 @@ func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject)
 
 	byteValue, _ := ioutil.ReadAll(xmlMapStructure)
 	xml.Unmarshal(byteValue, &returnMap)
+
+	mapImage, err := loadPicture(mapImageFile)
+	if err!= nil {
+		panic(err)
+	}
+	returnMap.sprite = pixel.NewSprite(mapImage, mapImage.Bounds())
 }
 
 func run() {
@@ -86,14 +106,27 @@ func run() {
 
 	//Initialize items, zombies, player
 
+	isGameOver := false //condition on if player won/lost
 	//Launch program
 	for !win.Closed() { //close the program when the user hits the X
-		//read and reach to inputs
+
+	if !isGameOver {
+		//read and react to inputs
+		//check positional movements
+		if win.Pressed(pixelgl.KeyUp) {
+		} else if win.Pressed(pixelgl.KeyDown) {
+		} else if win.Pressed(pixelgl.KeyLeft) {
+		} else if win.Pressed(pixelgl.KeyRight) {
+		}
 
 		//update time based objects or values
-
-		//display map, items, zombies, player
 	}
+		//display map, items, zombies, player
+		if isGameOver {
+			//display the end game graphic to window
+		}
+	}
+
 }
 
 func main() {
