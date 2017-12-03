@@ -82,6 +82,15 @@ func loadPicture(path string) (pixel.Picture, error) {
 	return pixel.PictureDataFromImage(img), nil
 }
 
+func isValidMove(toPos intVec, gameMap mapObject) {
+	for lyr := range gameMap.Layers { //iterate through each layer
+		if lyr.Properties.Collision && lyr.Data[toPos.X * mapHeight + toPos.Y] > 0{ //check that this layer has collision enabled and that the to position has something there
+			return false  //not a valid move
+		}
+	}
+	return true //passed all tests, is a valid move
+}
+
 func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
 	xmlMapStructure, err := os.Open(mapStructureFile)
 	if err != nul {
