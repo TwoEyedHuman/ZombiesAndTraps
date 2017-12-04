@@ -29,6 +29,9 @@ type mapObject struct { //object that holds the properties of the map itself
 	Version int `json:"version"`
 	Width int `json:"width"`
 	sprite *pixel.Sprite
+	opponents []entity
+	player entity
+	items []entity
 }
 
 type mapLayer struct { //each map has an associated layer
@@ -47,6 +50,7 @@ type mapLayer struct { //each map has an associated layer
 
 type property struct { //each map and layer has a set of properties that it can hold
 	Collision bool
+	pickupable bool
 }
 
 type entity struct { //players and NPC
@@ -56,6 +60,7 @@ type entity struct { //players and NPC
 	facing intVec
 	health int
 	pack []item
+	properties property
 }
 
 type item struct {
@@ -88,6 +93,25 @@ func isValidMove(toPos intVec, gameMap mapObject) {
 			return false  //not a valid move
 		}
 	}
+
+	for itm := range gameMap.items { //iterate through items in field and if collision, then it is not a valid move
+		if !itm.properties.Collision && toPos == itm.pos {
+			return false
+		}
+	}
+
+	//collision with player
+	if toPos == gameMap.player.pos {
+		return false
+	}
+
+	//collision with enemies
+	for opp := range gameMap.opponents {
+		if toPos == opp.pos {
+			return false
+		}
+	}
+
 	return true //passed all tests, is a valid move
 }
 
