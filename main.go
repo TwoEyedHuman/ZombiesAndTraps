@@ -115,6 +115,12 @@ func isValidMove(toPos intVec, gameMap mapObject) {
 	return true //passed all tests, is a valid move
 }
 
+func posToVec(pos intVec) (v pixel.Vec) {
+	v.X = float64(pixelPerGrid * pos.X)
+	v.Y = float64(pixelPerGrid * pos.Y)
+	return
+}
+
 func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
 	xmlMapStructure, err := os.Open(mapStructureFile)
 	if err != nul {
@@ -146,18 +152,30 @@ func run() {
 	if !isGameOver {
 		//read and react to inputs
 		//check positional movements
-		if win.Pressed(pixelgl.KeyUp) {
-		} else if win.Pressed(pixelgl.KeyDown) {
-		} else if win.Pressed(pixelgl.KeyLeft) {
-		} else if win.Pressed(pixelgl.KeyRight) {
+		if win.Pressed(pixelgl.KeyUp) && isValidMove(addIntVec(gameMap.player.pos, intVec{0,1})) {
+		} else if win.Pressed(pixelgl.KeyDown) && isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1})){
+		} else if win.Pressed(pixelgl.KeyLeft) && {isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}))
+		} else if win.Pressed(pixelgl.KeyRight) && {isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}))
 		}
 
 		//update time based objects or values
+
+		//display everything
+		gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+		gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pizel.ZV, 1).Moved(posToVec(gameMap.player.sprite.pos)))
+		if win.Pressed(pixel.KeySpace) {
+			for itm := range gameMap.player.pack {
+				itm.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
+			}
+		}
+
 	}
 		//display map, items, zombies, player
-		if isGameOver {
-			//display the end game graphic to window
-		}
+	if isGameOver {
+		//display the end game graphic to window
+		gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+		gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pizel.ZV, 1).Moved(posToVec(gameMap.player.sprite.pos)))
+	}
 	}
 
 }
