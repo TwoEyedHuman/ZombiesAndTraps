@@ -50,7 +50,7 @@ type mapLayer struct { //each map has an associated layer
 
 type property struct { //each map and layer has a set of properties that it can hold
 	Collision bool
-	pickupable bool
+	pickupable bool //is the player or entity able to pick up and store the item?
 }
 
 type entity struct { //players and NPC
@@ -72,6 +72,16 @@ type item struct {
 type intVec struct {
 	X int
 	Y int
+}
+
+func intVecEqual(v1 intVec, v2 intVec) bool {
+	var isEqual bool
+	if v1.X == v2.X && v1.Y == v2.Y {
+		isEqual = true
+	} else {
+		isEqual = false
+	}
+	return isEqual
 }
 
 func loadPicture(path string) (pixel.Picture, error) {
@@ -101,7 +111,7 @@ func isValidMove(toPos intVec, gameMap mapObject) {
 	}
 
 	//collision with player
-	if toPos == gameMap.player.pos {
+	if intVecEqual(toPos, gameMap.player.pos) {
 		return false
 	}
 
@@ -152,13 +162,22 @@ func run() {
 	if !isGameOver {
 		//read and react to inputs
 		//check positional movements
-		if win.Pressed(pixelgl.KeyUp) && isValidMove(addIntVec(gameMap.player.pos, intVec{0,1})) {
-		} else if win.Pressed(pixelgl.KeyDown) && isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1})){
-		} else if win.Pressed(pixelgl.KeyLeft) && {isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}))
-		} else if win.Pressed(pixelgl.KeyRight) && {isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}))
+		if win.Pressed(pixelgl.KeyUp) && 
+		       isValidMove(addIntVec(gameMap.player.pos, intVec{0,1})) {
+
+		} else if win.Pressed(pixelgl.KeyDown) &&
+			   isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1})){
+
+		} else if win.Pressed(pixelgl.KeyLeft) &&
+ 			   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
+
+		} else if win.Pressed(pixelgl.KeyRight) && 
+			   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
+
 		}
 
 		//update time based objects or values
+		
 
 		//display everything
 		gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
