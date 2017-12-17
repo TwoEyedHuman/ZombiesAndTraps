@@ -34,6 +34,11 @@ type mapObject struct { //object that holds the properties of the map itself
 	items []entity
 }
 
+type initializationData struct {
+	Player entity `json:"player"`
+	Zombies []entity `json:"zombies"`
+}
+
 type mapLayer struct { //each map has an associated layer
 	Data []int `json:"data"`
 	Height int `json:"height"`
@@ -72,6 +77,12 @@ type item struct {
 type intVec struct {
 	X int
 	Y int
+}
+
+func addIntVec(v1 intVec, v2 intVec) (v3 intVec) {
+	v3.X = v1.X + v2.X
+	v3.Y = v1.Y + v2.Y
+	return
 }
 
 func intVecEqual(v1 intVec, v2 intVec) bool {
@@ -131,10 +142,27 @@ func posToVec(pos intVec) (v pixel.Vec) {
 	return
 }
 
+func setEntityData(toEntity *entity, fromEntity entity) {
+	if fromEntity.name != nil {
+		toEntity.name = fromEntity.name
+	}
+	if fromEntity.pos != nil {
+		toEntity.pos.X = fromEntity.pos.X
+		toEntity.pos.Y = fromtEntity.pos.Y
+	}
+	if fromEntity.facing != nil {
+		toEntity.facing.X = fromEntity.facing.X
+		toEntity.facing.Y = fromEntity.facing.Y
+	}
+	if fromEntity.health != nil {
+		toEntity.health = fromEntity.health
+	}
+}
+
 func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
 	xmlMapStructure, err := os.Open(mapStructureFile)
-	if err != nul {
-		fmt.Println(err)
+	if err != nil {
+		fmt.Printf("Error loading map initialization data file: %s\n", err)
 	}
 
 	defer xmlMapStructure.Close()
@@ -144,61 +172,84 @@ func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject)
 
 	mapImage, err := loadPicture(mapImageFile)
 	if err!= nil {
-		panic(err)
+		fmt.Printf("Error loading map image data file: %s\n", err)
 	}
 	returnMap.sprite = pixel.NewSprite(mapImage, mapImage.Bounds())
+}
+
+func initializeGame(gameFile string, inputMap mapObject) mapObject {
+	//Build game initialization data structure
+	xmlMapStructure, err := os.Open(gameFile)
+	if err != nil {
+		fmt.Printf("Error loading game initialization data file: %s\n", err)
+	}
+	defer xmlMapStructure.Close()
+	byteValue, _ := ioutil.ReadAll(xmlMapStructure)
+	var iniMap initializationData
+	xml.Unmarshal(byteValue, &iniMap)
+	
+	//Load into the game map
+	setEntityData(mapObject.player, iniMap.Player)
+	for zom, _ := iniMap.Zombies {
+		inputMap.opponents = append(inputMap.opponents, zom)
+	}
+	
+	return inputMap
 }
 
 func run() {
 	//Load the map into a structure
 	gameMap := loadMap("map/bar_Image.png", "map/bar.json")
-
+	gameMap = initializeGame("initializationData.json", gameMap)
 	//Initialize items, zombies, player
 
 	isGameOver := false //condition on if player won/lost
+
 	//Launch program
 	for !win.Closed() { //close the program when the user hits the X
 
-	if !isGameOver {
-		//read and react to inputs
-		//check positional movements
-		if win.Pressed(pixelgl.KeyUp) && 
-		       isValidMove(addIntVec(gameMap.player.pos, intVec{0,1})) {
-
-		} else if win.Pressed(pixelgl.KeyDown) &&
-			   isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1})){
-
-		} else if win.Pressed(pixelgl.KeyLeft) &&
- 			   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
-
-		} else if win.Pressed(pixelgl.KeyRight) && 
-			   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
-
-		}
-
-		//update time based objects or values
-		
-
-		//display everything
-		gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
-		gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pizel.ZV, 1).Moved(posToVec(gameMap.player.sprite.pos)))
-		if win.Pressed(pixel.KeySpace) {
-			for itm := range gameMap.player.pack {
-				itm.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
-			}
-		}
-
-	}
 		//display map, items, zombies, player
-	if isGameOver {
-		//display the end game graphic to window
-		gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
-		gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pizel.ZV, 1).Moved(posToVec(gameMap.player.sprite.pos)))
-	}
-	}
 
+		if !isGameOver {
+			//read and react to inputs
+			//check positional movements and update as necessary
+			if win.Pressed(pixelgl.KeyUp) && 
+			       isValidMove(addIntVec(gameMap.player.pos, intVec{0,1})) {
+				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{0,1})
+			} else if win.Pressed(pixelgl.KeyDown) &&
+				   isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1})){
+				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{0,-1})
+			} else if win.Pressed(pixelgl.KeyLeft) &&
+ 				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
+				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{1,0})
+			} else if win.Pressed(pixelgl.KeyRight) && 
+				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
+				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{1,0})
+			}
+	
+			//update time based objects or values
+			
+	
+			//display everything
+			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center())) //display the map
+			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.pos))) //display the player
+			for opp, _ := range gameMap.opponents { //iterate through and display the opponents
+				opp.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(opp.pos)))
+			}
+			if win.Pressed(pixel.KeySpace) { //check if the menu button is pressed and display everything in the backpack if so
+				for itm := range gameMap.player.pack {
+					itm.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
+				}
+			}
+	
+		} else {
+			//display the end game graphic to window
+			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pizel.ZV, 1).Moved(posToVec(gameMap.player.sprite.pos)))
+		}
+	}
 }
-
+	
 func main() {
 	pixelgl.Run(run)
 }
