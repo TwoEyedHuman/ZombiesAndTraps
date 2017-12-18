@@ -6,10 +6,8 @@ import (
 	_"image/png"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"golang.org/x/image/colornames"
 	"fmt"
-	"encoding/json"
-	"bytes"
+	"math"
 )
 
 const mapHeight int = 16 //map is mapHeight x mapHeight tiles
@@ -66,6 +64,8 @@ type entity struct { //players and NPC
 	health int
 	pack []item
 	properties property
+	displacement pixel.Vec
+	secondsPerTile float64
 }
 
 type item struct {
@@ -93,6 +93,20 @@ func intVecEqual(v1 intVec, v2 intVec) bool {
 		isEqual = false
 	}
 	return isEqual
+}
+
+func updateDisplacements(gameMap mapObject, dt float64) mapObject {
+	//update player displacement
+	gameMap.player.displacement.X = math.max(float64(0), gameMap.displacement.X - (dt/gameMap.player.secondsPerTile))
+	gameMap.player.displacement.Y = max(float64(0), gameMap.displacement.Y - (dt/gameMap.player.secondsPerTile))
+
+	//update opponents displacement
+	for opp, _ := range gameMap.opponents {
+		opp.displacement.X = max(float64(0), opp.displacement.X - (dt/opp.secondsPerTile))
+		opp.displacement.Y = max(float64(0), opp.displacement.Y - (dt/opp.secondsPerTile))
+	}
+	
+	return gameMap
 }
 
 func loadPicture(path string) (pixel.Picture, error) {
@@ -190,11 +204,21 @@ func initializeGame(gameFile string, inputMap mapObject) mapObject {
 	
 	//Load into the game map
 	setEntityData(mapObject.player, iniMap.Player)
-	for zom, _ := iniMap.Zombies {
+	for zom, _ := range iniMap.Zombies {
 		inputMap.opponents = append(inputMap.opponents, zom)
 	}
 	
 	return inputMap
+}
+
+func gameOverCondition(gameMap mapObject) (isGameOver bool) {
+	isGameOver = false
+	for opp, _ := range gameMap.opponents {
+		if intVecEqual(gameMap.player.pos, opp.pos) {
+			isGameOver = true
+		}
+	}
+	return
 }
 
 func run() {
@@ -205,9 +229,11 @@ func run() {
 
 	isGameOver := false //condition on if player won/lost
 
+	last := time.Now()
+	dt := time.Since(last).Seconds()
+
 	//Launch program
 	for !win.Closed() { //close the program when the user hits the X
-
 		//display map, items, zombies, player
 
 		if !isGameOver {
@@ -228,7 +254,12 @@ func run() {
 			}
 	
 			//update time based objects or values
-			
+			dt = time.Since(last).Seconds()
+			last = time.Now()
+			gameMap = updateDisplacements(gameMap, dt)
+
+			//check end-game conditions
+			isGameOver = gameOverCondition(gameMap)
 	
 			//display everything
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center())) //display the map
