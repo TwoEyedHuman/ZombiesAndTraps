@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	"encoding/json"
+//	"encoding/json"
 	"image"
 	_"image/png"
 	"github.com/faiface/pixel"
@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"math"
 	"io/ioutil"
+	"encoding/xml"
+	"time"
 )
 
 const mapHeight int = 16 //map is mapHeight x mapHeight tiles
@@ -152,7 +154,7 @@ func posToVec(pos intVec) (v pixel.Vec) {
 	return
 }
 
-func setEntityData(toEntity *entity, fromEntity entity) {
+func setPlayerData(toEntity mapObject, fromEntity entity) mapObject {
 	if fromEntity.name != "" {
 		toEntity.player.name = fromEntity.name
 	}
@@ -167,9 +169,11 @@ func setEntityData(toEntity *entity, fromEntity entity) {
 	if fromEntity.health == -1 {
 		toEntity.player.health = fromEntity.health
 	}
+
+	return toEntity
 }
 
-func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
+func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
 	xmlMapStructure, err := os.Open(mapStructureFile)
 	if err != nil {
 		fmt.Printf("Error loading map initialization data file: %s\n", err)
@@ -185,6 +189,7 @@ func loadmap(mapImageFile string, mapStructureFile string) (returnMap mapObject)
 		fmt.Printf("Error loading map image data file: %s\n", err)
 	}
 	returnMap.sprite = pixel.NewSprite(mapImage, mapImage.Bounds())
+	return
 }
 
 func initializeGame(gameFile string, inputMap mapObject) mapObject {
@@ -199,7 +204,7 @@ func initializeGame(gameFile string, inputMap mapObject) mapObject {
 	xml.Unmarshal(byteValue, &iniMap)
 	
 	//Load into the game map
-	setEntityData(mapObject, iniMap.Player)
+	setPlayerData(inputMap, iniMap.Player)
 	for _, zom := range iniMap.Zombies {
 		inputMap.opponents = append(inputMap.opponents, zom)
 	}
@@ -218,6 +223,17 @@ func gameOverCondition(gameMap mapObject) (isGameOver bool) {
 }
 
 func run() {
+	//Create the window to display the game
+	cfg := pixel.WindowConfig {
+		Title: "Zombies and Traps",
+		Bounds: pixel.R(0,0,512,512),
+		VSync: true,
+	}
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		panic(err)
+	}
+
 	//Load the map into a structure
 	gameMap := loadMap("map/bar_Image.png", "map/bar.json")
 	gameMap = initializeGame("initializationData.json", gameMap)
@@ -236,16 +252,16 @@ func run() {
 			//read and react to inputs
 			//check positional movements and update as necessary
 			if win.Pressed(pixelgl.KeyUp) && 
-			       isValidMove(addIntVec(gameMap.player.pos, intVec{0,1})) {
+			       isValidMove(addIntVec(gameMap.player.pos, intVec{0,1}), gameMap) {
 				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{0,1})
 			} else if win.Pressed(pixelgl.KeyDown) &&
-				   isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1})){
+				   isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1}), gameMap){
 				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{0,-1})
 			} else if win.Pressed(pixelgl.KeyLeft) &&
- 				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
+ 				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}), gameMap){
 				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{1,0})
 			} else if win.Pressed(pixelgl.KeyRight) && 
-				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0})){
+				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}), gameMap){
 				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{1,0})
 			}
 	
