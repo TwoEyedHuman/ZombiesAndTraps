@@ -35,6 +35,6 @@
       "X": "0",
       "Y": "-1"
     },
-    "sprite": "BlueGuy"
+    "spritePath": "agnes.png"
   }
 }

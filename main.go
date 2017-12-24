@@ -70,6 +70,7 @@ type entity struct { //players and NPC
 	properties property
 	displacement pixel.Vec
 	secondsPerTile float64
+	SpritePath string `json:"spritePath"`
 }
 
 type intVec struct {
@@ -177,6 +178,7 @@ func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject)
 	xmlMapStructure, err := os.Open(mapStructureFile)
 	if err != nil {
 		fmt.Printf("Error loading map initialization data file: %s\n", err)
+		panic(err)
 	}
 
 	defer xmlMapStructure.Close()
@@ -187,12 +189,15 @@ func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject)
 	mapImage, err := loadPicture(mapImageFile)
 	if err!= nil {
 		fmt.Printf("Error loading map image data file: %s\n", err)
+		panic(err)
 	}
+
 	returnMap.sprite = pixel.NewSprite(mapImage, mapImage.Bounds())
 	return
 }
 
-func initializeGame(gameFile string, inputMap mapObject) mapObject {
+func initializeGame(gameFile string, inMap mapObject) mapObject {
+	outMap := mapObject(inMap)
 	//Build game initialization data structure
 	xmlMapStructure, err := os.Open(gameFile)
 	if err != nil {
@@ -204,12 +209,23 @@ func initializeGame(gameFile string, inputMap mapObject) mapObject {
 	xml.Unmarshal(byteValue, &iniMap)
 	
 	//Load into the game map
-	setPlayerData(inputMap, iniMap.Player)
-	for _, zom := range iniMap.Zombies {
+/*	for _, zom := range iniMap.Zombies {
 		inputMap.opponents = append(inputMap.opponents, zom)
+	}*/
+	playerImage, err := loadPicture(iniMap.player.SpritePath)
+	if err!= nil {
+		fmt.Printf("Error loading map image data file: %s\n", err)
+		panic(err)
 	}
-	
-	return inputMap
+	outMap.player.health = iniMap.Player.health
+	outMap.player.pos.X = iniMap.Player.pos.X
+	outMap.player.pos.Y = iniMap.Player.pos.Y
+	outMap.player.facing.X = iniMap.Player.facing.X
+	outMap.player.facing.Y = iniMap.Player.facing.Y
+
+	outMap.sprite = pixel.NewSprite(playerImage, playerImage.Bounds())
+
+	return outMap
 }
 
 func gameOverCondition(gameMap mapObject) (isGameOver bool) {
@@ -224,7 +240,7 @@ func gameOverCondition(gameMap mapObject) (isGameOver bool) {
 
 func run() {
 	//Create the window to display the game
-	cfg := pixel.WindowConfig {
+	cfg := pixelgl.WindowConfig {
 		Title: "Zombies and Traps",
 		Bounds: pixel.R(0,0,512,512),
 		VSync: true,
@@ -237,17 +253,15 @@ func run() {
 	//Load the map into a structure
 	gameMap := loadMap("map/bar_Image.png", "map/bar.json")
 	gameMap = initializeGame("initializationData.json", gameMap)
-	//Initialize items, zombies, player
 
+	//Initialize items, zombies, player
 	isGameOver := false //condition on if player won/lost
 
 	last := time.Now()
 	dt := time.Since(last).Seconds()
-
 	//Launch program
 	for !win.Closed() { //close the program when the user hits the X
 		//display map, items, zombies, player
-
 		if !isGameOver {
 			//read and react to inputs
 			//check positional movements and update as necessary
@@ -272,23 +286,24 @@ func run() {
 
 			//check end-game conditions
 			isGameOver = gameOverCondition(gameMap)
-	
 			//display everything
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center())) //display the map
-			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.pos))) //display the player
-			for _, opp := range gameMap.opponents { //iterate through and display the opponents
-				opp.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(opp.pos)))
-			}
-			if win.Pressed(pixel.KeySpace) { //check if the menu button is pressed and display everything in the backpack if so
+//			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.pos))) //display the player
+//			for _, opp := range gameMap.opponents { //iterate through and display the opponents
+//				opp.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(opp.pos)))
+//			}
+
+			if win.Pressed(pixelgl.KeySpace) { //check if the menu button is pressed and display everything in the backpack if so
 				for _, itm := range gameMap.player.pack {
-					itm.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
+					itm.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
 				}
 			}
-	
+			win.Update()
 		} else {
 			//display the end game graphic to window
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
-			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pizel.ZV, 1).Moved(posToVec(gameMap.player.sprite.pos)))
+			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.pos)))
+			win.Update()
 		}
 	}
 }
