@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-//	"encoding/json"
+	"encoding/json"
 	"image"
 	_"image/png"
 	"github.com/faiface/pixel"
@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math"
 	"io/ioutil"
-	"encoding/xml"
 	"time"
 )
 
@@ -37,8 +36,9 @@ type mapObject struct { //object that holds the properties of the map itself
 }
 
 type initializationData struct {
+	Loadtype string `json:"loadtype"`
 	Player entity `json:"player"`
-	Zombies []entity `json:"zombies"`
+//	Zombies []entity `json:"zombies"`
 }
 
 type mapLayer struct { //each map has an associated layer
@@ -61,16 +61,16 @@ type property struct { //each map and layer has a set of properties that it can 
 }
 
 type entity struct { //players and NPC
-	name string
-	sprite *pixel.Sprite
-	pos intVec
-	facing intVec
-	health int
-	pack []entity
-	properties property
-	displacement pixel.Vec
-	secondsPerTile float64
-	SpritePath string `json:"spritePath"`
+	Name string `json:"name"`
+	Sprite *pixel.Sprite
+	Pos intVec `json:"pos"`
+	Facing intVec `json:"facing"`
+	Health int `json:"health"`
+	Pack []entity
+	Properties property `json:"properties"`
+	Displacement pixel.Vec `json:"displacement"`
+	Secondspertile float64 `json:"secondspertile"`
+	Spritepath string `json:"spritepath"`
 }
 
 type intVec struct {
@@ -96,13 +96,13 @@ func intVecEqual(v1 intVec, v2 intVec) bool {
 
 func updateDisplacements(gameMap mapObject, dt float64) mapObject {
 	//update player displacement
-	gameMap.player.displacement.X = math.Max(float64(0), gameMap.player.displacement.X - (dt/gameMap.player.secondsPerTile))
-	gameMap.player.displacement.Y = math.Max(float64(0), gameMap.player.displacement.Y - (dt/gameMap.player.secondsPerTile))
+	gameMap.player.Displacement.X = math.Max(float64(0), gameMap.player.Displacement.X - (dt/gameMap.player.Secondspertile))
+	gameMap.player.Displacement.Y = math.Max(float64(0), gameMap.player.Displacement.Y - (dt/gameMap.player.Secondspertile))
 
 	//update opponents displacement
 	for _, opp := range gameMap.opponents {
-		opp.displacement.X = math.Max(float64(0), opp.displacement.X - (dt/opp.secondsPerTile))
-		opp.displacement.Y = math.Max(float64(0), opp.displacement.Y - (dt/opp.secondsPerTile))
+		opp.Displacement.X = math.Max(float64(0), opp.Displacement.X - (dt/opp.Secondspertile))
+		opp.Displacement.Y = math.Max(float64(0), opp.Displacement.Y - (dt/opp.Secondspertile))
 	}
 	
 	return gameMap
@@ -129,19 +129,19 @@ func isValidMove(toPos intVec, gameMap mapObject) bool {
 	}
 
 	for _, itm := range gameMap.items { //iterate through items in field and if collision, then it is not a valid move
-		if !itm.properties.Collision && toPos == itm.pos {
+		if !itm.Properties.Collision && toPos == itm.Pos {
 			return false
 		}
 	}
 
 	//collision with player
-	if intVecEqual(toPos, gameMap.player.pos) {
+	if intVecEqual(toPos, gameMap.player.Pos) {
 		return false
 	}
 
 	//collision with enemies
 	for _, opp := range gameMap.opponents {
-		if toPos == opp.pos {
+		if toPos == opp.Pos {
 			return false
 		}
 	}
@@ -155,36 +155,19 @@ func posToVec(pos intVec) (v pixel.Vec) {
 	return
 }
 
-func setPlayerData(toEntity mapObject, fromEntity entity) mapObject {
-	if fromEntity.name != "" {
-		toEntity.player.name = fromEntity.name
-	}
-	if !intVecEqual(fromEntity.pos, intVec{0,0}) {
-		toEntity.player.pos.X = fromEntity.pos.X
-		toEntity.player.pos.Y = fromEntity.pos.Y
-	}
-	if !intVecEqual(fromEntity.facing, intVec{0,0}) {
-		toEntity.player.facing.X = fromEntity.facing.X
-		toEntity.player.facing.Y = fromEntity.facing.Y
-	}
-	if fromEntity.health == -1 {
-		toEntity.player.health = fromEntity.health
-	}
 
-	return toEntity
-}
 
 func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject) {
-	xmlMapStructure, err := os.Open(mapStructureFile)
+	jsonMapStructure, err := os.Open(mapStructureFile)
 	if err != nil {
 		fmt.Printf("Error loading map initialization data file: %s\n", err)
 		panic(err)
 	}
 
-	defer xmlMapStructure.Close()
+	defer jsonMapStructure.Close()
 
-	byteValue, _ := ioutil.ReadAll(xmlMapStructure)
-	xml.Unmarshal(byteValue, &returnMap)
+	byteValue, _ := ioutil.ReadAll(jsonMapStructure)
+	json.Unmarshal(byteValue, &returnMap)
 
 	mapImage, err := loadPicture(mapImageFile)
 	if err!= nil {
@@ -199,31 +182,32 @@ func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject)
 func initializeGame(gameFile string, inMap mapObject) mapObject {
 	outMap := mapObject(inMap)
 	//Build game initialization data structure
-	xmlMapStructure, err := os.Open(gameFile)
+	iDFile, err := os.Open(gameFile)
 	if err != nil {
 		fmt.Printf("Error loading game initialization data file: %s\n", err)
 	}
-	defer xmlMapStructure.Close()
-	byteValue, _ := ioutil.ReadAll(xmlMapStructure)
-	var iniMap initializationData
-	xml.Unmarshal(byteValue, &iniMap)
-	
+	defer iDFile.Close()
+	byteValue, _ := ioutil.ReadAll(iDFile)
+	var iniData initializationData
+	json.Unmarshal(byteValue, &iniData)
+
 	//Load into the game map
 /*	for _, zom := range iniMap.Zombies {
 		inputMap.opponents = append(inputMap.opponents, zom)
 	}*/
-	playerImage, err := loadPicture(iniMap.player.SpritePath)
+
+	playerImage, err := loadPicture(iniData.Player.Spritepath)
 	if err!= nil {
-		fmt.Printf("Error loading map image data file: %s\n", err)
+		fmt.Printf("Error loading player image data file (%s): %s\n", iniData.Player.Spritepath, err)
 		panic(err)
 	}
-	outMap.player.health = iniMap.Player.health
-	outMap.player.pos.X = iniMap.Player.pos.X
-	outMap.player.pos.Y = iniMap.Player.pos.Y
-	outMap.player.facing.X = iniMap.Player.facing.X
-	outMap.player.facing.Y = iniMap.Player.facing.Y
+	outMap.player.Health = iniData.Player.Health
+	outMap.player.Pos.X = iniData.Player.Pos.X
+	outMap.player.Pos.Y = iniData.Player.Pos.Y
+	outMap.player.Facing.X = iniData.Player.Facing.X
+	outMap.player.Facing.Y = iniData.Player.Facing.Y
 
-	outMap.sprite = pixel.NewSprite(playerImage, playerImage.Bounds())
+	outMap.player.Sprite = pixel.NewSprite(playerImage, playerImage.Bounds())
 
 	return outMap
 }
@@ -231,7 +215,7 @@ func initializeGame(gameFile string, inMap mapObject) mapObject {
 func gameOverCondition(gameMap mapObject) (isGameOver bool) {
 	isGameOver = false
 	for _, opp := range gameMap.opponents {
-		if intVecEqual(gameMap.player.pos, opp.pos) {
+		if intVecEqual(gameMap.player.Pos, opp.Pos) {
 			isGameOver = true
 		}
 	}
@@ -266,17 +250,17 @@ func run() {
 			//read and react to inputs
 			//check positional movements and update as necessary
 			if win.Pressed(pixelgl.KeyUp) && 
-			       isValidMove(addIntVec(gameMap.player.pos, intVec{0,1}), gameMap) {
-				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{0,1})
+			       isValidMove(addIntVec(gameMap.player.Pos, intVec{0,1}), gameMap) {
+				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{0,1})
 			} else if win.Pressed(pixelgl.KeyDown) &&
-				   isValidMove(addIntVec(gameMap.player.pos, intVec{0,-1}), gameMap){
-				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{0,-1})
+				   isValidMove(addIntVec(gameMap.player.Pos, intVec{0,-1}), gameMap){
+				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{0,-1})
 			} else if win.Pressed(pixelgl.KeyLeft) &&
- 				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}), gameMap){
-				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{1,0})
+ 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{1,0}), gameMap){
+				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{1,0})
 			} else if win.Pressed(pixelgl.KeyRight) && 
-				   isValidMove(addIntVec(gameMap.player.pos, intVec{1,0}), gameMap){
-				gameMap.player.pos = addIntVec(gameMap.player.pos, intVec{1,0})
+				   isValidMove(addIntVec(gameMap.player.Pos, intVec{1,0}), gameMap){
+				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{1,0})
 			}
 	
 			//update time based objects or values
@@ -294,15 +278,15 @@ func run() {
 //			}
 
 			if win.Pressed(pixelgl.KeySpace) { //check if the menu button is pressed and display everything in the backpack if so
-				for _, itm := range gameMap.player.pack {
-					itm.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
+				for _, itm := range gameMap.player.Pack {
+					itm.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
 				}
 			}
 			win.Update()
 		} else {
 			//display the end game graphic to window
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
-			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.pos)))
+			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos)))
 			win.Update()
 		}
 	}
@@ -311,3 +295,27 @@ func run() {
 func main() {
 	pixelgl.Run(run)
 }
+
+//Functions that will not be used
+/*
+func setPlayerData(toEntity mapObject, fromEntity entity) mapObject {
+	if fromEntity.name != "" {
+		toEntity.player.name = fromEntity.name
+	}
+	if !intVecEqual(fromEntity.pos, intVec{0,0}) {
+		toEntity.player.pos.X = fromEntity.pos.X
+		toEntity.player.pos.Y = fromEntity.pos.Y
+	}
+	if !intVecEqual(fromEntity.facing, intVec{0,0}) {
+		toEntity.player.facing.X = fromEntity.facing.X
+		toEntity.player.facing.Y = fromEntity.facing.Y
+	}
+	if fromEntity.health == -1 {
+		toEntity.player.health = fromEntity.health
+	}
+
+	return toEntity
+}
+
+
+*/
