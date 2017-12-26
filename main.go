@@ -122,14 +122,20 @@ func loadPicture(path string) (pixel.Picture, error) {
 }
 
 func isValidMove(toPos intVec, gameMap mapObject) bool {
+	fmt.Printf("Current position (%d, %d). Accessing position (%d, %d).\n", gameMap.player.Pos.X, gameMap.player.Pos.Y, toPos.X, toPos.Y)
+	if toPos.X >= mapHeight || toPos.Y >= mapHeight { //check that the to position is inside the square
+		return false
+	}
+
 	for _, lyr := range gameMap.Layers { //iterate through each layer
-		if lyr.Properties.Collision && lyr.Data[toPos.X * mapHeight + toPos.Y] > 0{ //check that this layer has collision enabled and that the to position has something there
+		if lyr.Properties.Collision &&
+				lyr.Data[256 - toPos.Y * mapHeight + toPos.X] > 0{ //check that this layer has collision enabled and that the to position has something there
 			return false  //not a valid move
 		}
 	}
 
 	for _, itm := range gameMap.items { //iterate through items in field and if collision, then it is not a valid move
-		if !itm.Properties.Collision && toPos == itm.Pos {
+		if !itm.Properties.Collision && intVecEqual(toPos, itm.Pos) {
 			return false
 		}
 	}
@@ -141,7 +147,7 @@ func isValidMove(toPos intVec, gameMap mapObject) bool {
 
 	//collision with enemies
 	for _, opp := range gameMap.opponents {
-		if toPos == opp.Pos {
+		if intVecEqual(toPos, opp.Pos) {
 			return false
 		}
 	}
@@ -150,8 +156,8 @@ func isValidMove(toPos intVec, gameMap mapObject) bool {
 }
 
 func posToVec(pos intVec) (v pixel.Vec) {
-	v.X = float64(pixelHeight * pos.X)
-	v.Y = float64(pixelHeight * pos.Y)
+	v.X = float64(pixelHeight * pos.X + pixelHeight/2)
+	v.Y = float64(pixelHeight * pos.Y - pixelHeight/2)
 	return
 }
 
@@ -249,16 +255,16 @@ func run() {
 		if !isGameOver {
 			//read and react to inputs
 			//check positional movements and update as necessary
-			if win.Pressed(pixelgl.KeyUp) && 
+			if win.JustPressed(pixelgl.KeyUp) && 
 			       isValidMove(addIntVec(gameMap.player.Pos, intVec{0,1}), gameMap) {
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{0,1})
-			} else if win.Pressed(pixelgl.KeyDown) &&
+			} else if win.JustPressed(pixelgl.KeyDown) &&
 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{0,-1}), gameMap){
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{0,-1})
-			} else if win.Pressed(pixelgl.KeyLeft) &&
- 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{1,0}), gameMap){
-				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{1,0})
-			} else if win.Pressed(pixelgl.KeyRight) && 
+			} else if win.JustPressed(pixelgl.KeyLeft) &&
+ 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{-1,0}), gameMap){
+				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{-1,0})
+			} else if win.JustPressed(pixelgl.KeyRight) && 
 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{1,0}), gameMap){
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{1,0})
 			}
@@ -272,7 +278,7 @@ func run() {
 			isGameOver = gameOverCondition(gameMap)
 			//display everything
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center())) //display the map
-//			gameMap.player.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.pos))) //display the player
+			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos))) //display the player
 //			for _, opp := range gameMap.opponents { //iterate through and display the opponents
 //				opp.sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(opp.pos)))
 //			}

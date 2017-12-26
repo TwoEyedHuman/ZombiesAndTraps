@@ -2,13 +2,13 @@
   "loadtype":"typeA",
   "player": {
     "pos": {
-      "X": "7",
-      "Y": "7"
+      "X": 7,
+      "Y": 7
     },
     "health": "5",
     "facing": {
-      "X": "0",
-      "Y": "-1"
+      "X": 0,
+      "Y": -1
     },
     "spritepath": "agnes.png"
   }
