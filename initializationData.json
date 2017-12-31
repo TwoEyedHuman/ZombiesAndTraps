@@ -9,7 +9,7 @@
       "X": 0,
       "Y": -1
     },
-    "spritepath": "agnes.png"
+    "spritepath": "Sprites/agnes.png"
   },
   "zombies": [
     {
@@ -22,7 +22,7 @@
         "X": 1,
         "Y": 0
       },
-      "spritepath": "mummy.png"
+      "spritepath": "Sprites/mummy.png"
     },
     {
       "pos": {
@@ -34,7 +34,7 @@
         "X": 1,
         "Y": 0
       },
-      "spritepath": "mummy.png"
+      "spritepath": "Sprites/mummy.png"
     }
   ],
   "fielditems": [
@@ -43,21 +43,21 @@
         "X": 13,
         "Y": 6
       },
-      "spritepath": "bolt04.png"
+      "spritepath": "Sprites/bolt04.png"
     },
     {
       "pos": {
         "X": 14,
         "Y": 6
       },
-      "spritepath": "bolt04.png"
+      "spritepath": "Sprites/bolt04.png"
     },
     {
       "pos": {
         "X": 15,
         "Y": 6
       },
-      "spritepath": "bolt04.png"
+      "spritepath": "Sprites/bolt04.png"
     }
   ]
 }

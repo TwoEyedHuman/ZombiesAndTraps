@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"time"
 	"math/rand"
+	"btlmath"
 )
 
 const mapHeight int = 16 //map is mapHeight x mapHeight tiles
@@ -69,43 +70,34 @@ type entity struct { //players, items, and NPC
 	Pack []entity //set of items that are attached to character
 	Properties property `json:"properties"` //Properties that relate to the entity, for example collision with opposing forces
 	Displacement pixel.Vec `json:"displacement"` //Used in creating smooth movement, represents the amount of space left to move by entity between tiles
+	DisplacementTime float64
 	Secondspertile float64 `json:"secondspertile"` //movement time between tiles
 	Spritepath string `json:"spritepath"` //the filepath to the sprite image
 }
 
-type intVec struct {
-	X int //horizontal displacement
-	Y int //vertical displacement
-}
-
-func addIntVec(v1 intVec, v2 intVec) (v3 intVec) {
-	v3.X = v1.X + v2.X //add the horizontal components
-	v3.Y = v1.Y + v2.Y //add the vertical components
-	return
-}
-
-func intVecEqual(v1 intVec, v2 intVec) bool { //compares the integer values of an intVec and determines if the components are equal
-	var isEqual bool
-	if v1.X == v2.X && v1.Y == v2.Y { //if both components are equal, then true
-		isEqual = true
-	} else {
-		isEqual = false //at least one of the components did not match
-	}
-	return isEqual
-}
-
 func updateDisplacements(gameMap mapObject, dt float64) mapObject { //update the displacement of player and all enemies
+	returnMap := mapObject(gameMap)
 	//update player displacement, if less than zero then return zero
-	gameMap.player.Displacement.X = math.Max(float64(0), gameMap.player.Displacement.X - (dt/gameMap.player.Secondspertile))
-	gameMap.player.Displacement.Y = math.Max(float64(0), gameMap.player.Displacement.Y - (dt/gameMap.player.Secondspertile))
+	if gameMap.player.DisplacementTime > 0 {
+		returnMap.player.Displacement.X = returnMap.player.Displacement.X - (dt/returnMap.player.Secondspertile)
+		returnMap.player.Displacement.Y = returnMap.player.Displacement.Y - (dt/returnMap.player.Secondspertile)
+	} else {
+		returnMap.player.DisplacementTime = 0
+		returnMap.player.Displacement = pixel.ZV
+	}
 
 	//update enemy displacements, if less than zero then return zero
-	for _, opp := range gameMap.opponents {
-		opp.Displacement.X = math.Max(float64(0), opp.Displacement.X - (dt/opp.Secondspertile))
-		opp.Displacement.Y = math.Max(float64(0), opp.Displacement.Y - (dt/opp.Secondspertile))
+	for i, opp := range returnMap.opponents {
+		if opp.DisplacementTime > 0 {
+			returnMap.opponents[i].Displacement.X = math.Max(float64(0), opp.Displacement.X - (dt/opp.Secondspertile))
+			returnMap.opponents[i].Displacement.Y = math.Max(float64(0), opp.Displacement.Y - (dt/opp.Secondspertile))
+		} else {
+			returnMap.opponents[i].DisplacementTime = 0
+			returnMap.opponents[i].Displacement = pixel.ZV
+		}
 	}
 
-	return gameMap
+	return returnMap
 }
 
 func loadPicture(path string) (pixel.Picture, error) { //given a file path, create a picture object
@@ -156,12 +148,6 @@ func isValidMove(toPos intVec, itemCollision bool, gameMap mapObject) (isValid b
 	}
 
 	return //return isValid
-}
-
-func posToVec(pos intVec) (v pixel.Vec) { //convert the intVec to a pixel vector for display purposes
-	v.X = float64(pixelHeight * pos.X + pixelHeight/2) //adjust horizontal position to display
-	v.Y = float64(pixelHeight * pos.Y - pixelHeight/2) //adjsut vertical position to display
-	return //return v
 }
 
 func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject) { //load the map initializtion file (structure and image) into the map object
@@ -233,7 +219,7 @@ func initializeGame(gameFile string, inMap mapObject) mapObject { //load the ini
 
 	return outMap
 }
-
+/*
 func intAbs (x int) (y int) { //an integer absolute value function
 	if x >0 {
 		y = x
@@ -242,7 +228,7 @@ func intAbs (x int) (y int) { //an integer absolute value function
 	}
 	return
 }
-
+*/
 func oppChase(plr intVec, opp intVec) (retVec intVec) { //function that runs the next move for the opponent to make when chasing the player
 	moveHorizontal := false
 	//if the player and opponent are on an angle, randomly choose a direction toward player
@@ -252,10 +238,10 @@ func oppChase(plr intVec, opp intVec) (retVec intVec) { //function that runs the
 
 	if (plr.X == opp.X && plr.Y != opp.Y) || moveHorizontal { //move horizontally toward player
 		retVec.X = 0
-		retVec.Y = int((plr.Y - opp.Y)/intAbs(plr.Y - opp.Y))
+		retVec.Y = int((plr.Y - opp.Y)/btlmath.IntAbs(plr.Y - opp.Y))
 	} else { //move vertically toward player
 		retVec.Y = 0
-		retVec.X = int((plr.X - opp.X)/intAbs(plr.X - opp.X))
+		retVec.X = int((plr.X - opp.X)/btlmath.IntAbs(plr.X - opp.X))
 	}
 	return
 }
@@ -353,12 +339,6 @@ func run() {
 
 			if win.JustPressed(pixelgl.KeyM) { //iterate over opponents to update their position
 				gameMap = updateOppPos(gameMap)
-/*				for i, opp := range gameMap.opponents {
-					oppMove := oppChase(gameMap.player.Pos, opp.Pos)
-					if isValidMove(addIntVec(opp.Pos, oppMove), true, gameMap) {
-						gameMap.opponents[i].Pos = addIntVec(opp.Pos, oppMove)
-					}
-				}*/
 			}
 
 			//update time based objects or values
