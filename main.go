@@ -219,16 +219,7 @@ func initializeGame(gameFile string, inMap mapObject) mapObject { //load the ini
 
 	return outMap
 }
-/*
-func intAbs (x int) (y int) { //an integer absolute value function
-	if x >0 {
-		y = x
-	} else {
-		y = -1*x
-	}
-	return
-}
-*/
+
 func oppChase(plr intVec, opp intVec) (retVec intVec) { //function that runs the next move for the opponent to make when chasing the player
 	moveHorizontal := false
 	//if the player and opponent are on an angle, randomly choose a direction toward player
@@ -358,9 +349,11 @@ func run() {
 			}
 			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos))) //display the player
 
-			if win.Pressed(pixelgl.KeySpace) { //check if the menu button is pressed and display everything in the backpack if so
+			if win.Pressed(pixelgl.KeyN) { //check if the menu button is pressed and display everything in the backpack if so
+				spaceDiff := pixel.Vec{float64(0), float64(0)}
 				for _, itm := range gameMap.player.Pack {
-					itm.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center()))
+					itm.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center().Add(spaceDiff)))
+					spaceDiff.X = spaceDiff.X + float64(itm.Sprite.Frame().Max.X - itm.Sprite.Frame().Min.X)
 				}
 			}
 			win.Update()
