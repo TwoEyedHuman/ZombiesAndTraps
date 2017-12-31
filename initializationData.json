@@ -1,15 +1,28 @@
 {
-  "loadtype":"typeA",
   "player": {
     "pos": {
       "X": 7,
       "Y": 7
     },
-    "health": "5",
+    "health": 5,
     "facing": {
       "X": 0,
       "Y": -1
     },
     "spritepath": "agnes.png"
-  }
+  },
+  "zombies": [
+    {
+      "pos": {
+        "X": 9,
+        "Y": 9
+      },
+      "health": 3,
+      "facing": {
+        "X": 1,
+        "Y": 0
+      },
+      "spritepath": "mummy.png"
+    }
+  ]
 }
