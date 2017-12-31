@@ -23,6 +23,41 @@
         "Y": 0
       },
       "spritepath": "mummy.png"
+    },
+    {
+      "pos": {
+        "X": 10,
+        "Y": 9
+      },
+      "health": 3,
+      "facing": {
+        "X": 1,
+        "Y": 0
+      },
+      "spritepath": "mummy.png"
+    }
+  ],
+  "fielditems": [
+    {
+      "pos": {
+        "X": 13,
+        "Y": 6
+      },
+      "spritepath": "bolt04.png"
+    },
+    {
+      "pos": {
+        "X": 14,
+        "Y": 6
+      },
+      "spritepath": "bolt04.png"
+    },
+    {
+      "pos": {
+        "X": 15,
+        "Y": 6
+      },
+      "spritepath": "bolt04.png"
     }
   ]
 }

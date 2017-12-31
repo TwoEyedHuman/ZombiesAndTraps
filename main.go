@@ -39,6 +39,7 @@ type mapObject struct { //object that holds the properties of the map itself
 type initializationData struct {
 	Player entity `json:"player"` //Initial data for the player
 	Zombies []entity `json:"zombies"` //Initial data for the opposing forces
+	Fielditems []entity `json:"fielditems"` //Initial items laying in field
 }
 
 type mapLayer struct { //each map has an associated layer
@@ -56,7 +57,7 @@ type mapLayer struct { //each map has an associated layer
 
 type property struct { //each map and layer has a set of properties that it can hold
 	Collision bool //Should the player be able to walk into the tile
-	pickupable bool //is the player or entity able to pick up and store the item?
+	Pickupable bool //is the player or entity able to pick up and store the item?
 }
 
 type entity struct { //players, items, and NPC
@@ -120,7 +121,7 @@ func loadPicture(path string) (pixel.Picture, error) { //given a file path, crea
 	return pixel.PictureDataFromImage(img), nil //return image object and no error signal
 }
 
-func isValidMove(toPos intVec, gameMap mapObject) (isValid bool) {
+func isValidMove(toPos intVec, itemCollision bool, gameMap mapObject) (isValid bool) { //checks that a position is able to be occupied by a player or opponent
 	isValid = true //initial value prior to testing invalid conditions
 
 	if toPos.X >= mapHeight || toPos.Y >= mapHeight { //check that the to position is inside the square
@@ -134,9 +135,11 @@ func isValidMove(toPos intVec, gameMap mapObject) (isValid bool) {
 		}
 	}
 
-	for _, itm := range gameMap.items { //iterate through items in field and if collision, then it is not a valid move
-		if !itm.Properties.Collision && intVecEqual(toPos, itm.Pos) {
-			isValid = false
+	if itemCollision {
+		for _, itm := range gameMap.items { //iterate through items in field and if collision, then it is not a valid move
+			if !itm.Properties.Collision && intVecEqual(toPos, itm.Pos) {
+				isValid = false
+			}
 		}
 	}
 
@@ -162,28 +165,28 @@ func posToVec(pos intVec) (v pixel.Vec) { //convert the intVec to a pixel vector
 }
 
 func loadMap(mapImageFile string, mapStructureFile string) (returnMap mapObject) { //load the map initializtion file (structure and image) into the map object
-	jsonMapStructure, err := os.Open(mapStructureFile)
+	jsonMapStructure, err := os.Open(mapStructureFile) //open the json file containing map structure
 	if err != nil {
 		fmt.Printf("Error loading map initialization data file: %s\n", err)
 		panic(err)
 	}
 
-	defer jsonMapStructure.Close()
+	defer jsonMapStructure.Close() //delay closing the file
 
 	byteValue, _ := ioutil.ReadAll(jsonMapStructure)
-	json.Unmarshal(byteValue, &returnMap)
+	json.Unmarshal(byteValue, &returnMap) //load the json data into a mapObject struture
 
-	mapImage, err := loadPicture(mapImageFile)
+	mapImage, err := loadPicture(mapImageFile) //load the map sprite into a usable object
 	if err!= nil {
 		fmt.Printf("Error loading map image data file: %s\n", err)
 		panic(err)
 	}
 
-	returnMap.sprite = pixel.NewSprite(mapImage, mapImage.Bounds())
+	returnMap.sprite = pixel.NewSprite(mapImage, mapImage.Bounds()) //apply the map picture as the sprite for the map
 	return
 }
 
-func initializeGame(gameFile string, inMap mapObject) mapObject {
+func initializeGame(gameFile string, inMap mapObject) mapObject { //load the initial setup of the game into the map
 	outMap := mapObject(inMap)
 	//Build game initialization data structure
 	iDFile, err := os.Open(gameFile)
@@ -209,20 +212,29 @@ func initializeGame(gameFile string, inMap mapObject) mapObject {
 	outMap.player.Sprite = pixel.NewSprite(playerImage, playerImage.Bounds())
 
 	for _, zom := range iniData.Zombies { //add the zombies to the opponents array
-		fmt.Printf("Adding a zombie!")
 		zomImage, err := loadPicture(zom.Spritepath)
 		if err != nil {
 			fmt.Printf("Error loading zombie image data file (%s): %s\n", zom.Spritepath, err)
 			panic(err)
 		}
-		zom.Sprite = pixel.NewSprite(zomImage, zomImage.Bounds())
+		zom.Sprite = pixel.NewSprite(zomImage, zomImage.Bounds()) //set zombie sprite
 		outMap.opponents = append(outMap.opponents, zom)
+	}
+
+	for _, itm := range iniData.Fielditems {
+		itmImage, err := loadPicture(itm.Spritepath)
+		if err != nil {
+			fmt.Printf("Error loading an item image data file (%s): %s\n", itm.Spritepath, err)
+			panic(err)
+		}
+		itm.Sprite = pixel.NewSprite(itmImage, itmImage.Bounds())
+		outMap.items = append(outMap.items, itm)
 	}
 
 	return outMap
 }
 
-func intAbs (x int) (y int) {
+func intAbs (x int) (y int) { //an integer absolute value function
 	if x >0 {
 		y = x
 	} else {
@@ -231,30 +243,67 @@ func intAbs (x int) (y int) {
 	return
 }
 
-func oppChase(plr intVec, opp intVec) (retVec intVec) {
+func oppChase(plr intVec, opp intVec) (retVec intVec) { //function that runs the next move for the opponent to make when chasing the player
 	moveHorizontal := false
 	//if the player and opponent are on an angle, randomly choose a direction toward player
 	if plr.X - opp.X != 0 && plr.Y - opp.Y != 0 && rand.Intn(2) == 0 {
 		moveHorizontal = true
 	}
 
-	if (plr.X == opp.X && plr.Y != opp.Y) || moveHorizontal { //if player and opponent are horizontal (X == X), move toward player
+	if (plr.X == opp.X && plr.Y != opp.Y) || moveHorizontal { //move horizontally toward player
 		retVec.X = 0
 		retVec.Y = int((plr.Y - opp.Y)/intAbs(plr.Y - opp.Y))
-	} else { //if player and opponent are vertical (Y == Y), move toward player
+	} else { //move vertically toward player
 		retVec.Y = 0
 		retVec.X = int((plr.X - opp.X)/intAbs(plr.X - opp.X))
 	}
 	return
 }
 
-func gameOverCondition(gameMap mapObject) (isGameOver bool) {
+func gameOverCondition(gameMap mapObject) (isGameOver bool) { //determines if the game is over or not
 	isGameOver = false
 	for _, opp := range gameMap.opponents {
-		if intVecEqual(gameMap.player.Pos, opp.Pos) {
+		if intVecEqual(gameMap.player.Pos, opp.Pos) { //if an opponent occupies same space as player, then game is over
 			isGameOver = true
 		}
 	}
+	return
+}
+func playerPickup (gameMap mapObject) (returnMap mapObject) { //determine what to do when a player presses pickup
+	itmIndex := -1
+	if len(gameMap.items) > 0 {
+		var itmPicked entity
+		for i, itm := range gameMap.items {
+			if intVecEqual(gameMap.player.Pos, itm.Pos) {
+				itmPicked = itm	
+				itmIndex = i
+			}
+		}
+		if itmIndex >= 0 {
+			gameMap.items[itmIndex] = gameMap.items[len(gameMap.items)-1]
+			gameMap.items = gameMap.items[:len(gameMap.items)-1]
+			gameMap.player.Pack = append(gameMap.player.Pack, itmPicked)
+		}
+	}
+	if itmIndex == -1 && len(gameMap.player.Pack) > 0 {
+		gameMap.player.Pack[0].Pos.X = gameMap.player.Pos.X
+		gameMap.player.Pack[0].Pos.Y = gameMap.player.Pos.Y
+		gameMap.items = append(gameMap.items, gameMap.player.Pack[0])
+		gameMap.player.Pack[0] = gameMap.player.Pack[len(gameMap.player.Pack)-1]
+		gameMap.player.Pack = gameMap.player.Pack[:len(gameMap.player.Pack)-1]
+	}
+	returnMap = gameMap
+	return
+}
+
+func updateOppPos(gameMap mapObject) (returnMap mapObject) { //iterate over all opponents and update their position
+	for i, opp := range gameMap.opponents {
+		oppMove := oppChase(gameMap.player.Pos, opp.Pos)
+		if isValidMove(addIntVec(opp.Pos, oppMove), true, gameMap) {
+			gameMap.opponents[i].Pos = addIntVec(opp.Pos, oppMove)
+		}
+	}
+	returnMap = gameMap
 	return
 }
 
@@ -283,27 +332,33 @@ func run() {
 	for !win.Closed() { //close the program when the user hits the X
 		//display map, items, zombies, player
 		if !isGameOver {
-			//read and react to inputs
 			//check positional movements and update as necessary
 			if win.JustPressed(pixelgl.KeyUp) && 
-			       isValidMove(addIntVec(gameMap.player.Pos, intVec{0,1}), gameMap) {
+			       isValidMove(addIntVec(gameMap.player.Pos, intVec{0,1}), false, gameMap) {
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{0,1})
 			} else if win.JustPressed(pixelgl.KeyDown) &&
-				   isValidMove(addIntVec(gameMap.player.Pos, intVec{0,-1}), gameMap){
+				   isValidMove(addIntVec(gameMap.player.Pos, intVec{0,-1}), false, gameMap){
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{0,-1})
 			} else if win.JustPressed(pixelgl.KeyLeft) &&
- 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{-1,0}), gameMap){
+ 				   isValidMove(addIntVec(gameMap.player.Pos, intVec{-1,0}), false, gameMap){
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{-1,0})
 			} else if win.JustPressed(pixelgl.KeyRight) && 
-				   isValidMove(addIntVec(gameMap.player.Pos, intVec{1,0}), gameMap){
+				   isValidMove(addIntVec(gameMap.player.Pos, intVec{1,0}), false, gameMap){
 				gameMap.player.Pos = addIntVec(gameMap.player.Pos, intVec{1,0})
 			}
 	
-			if win.JustPressed(pixelgl.KeySpace) {
-				oppMove := oppChase(gameMap.player.Pos, gameMap.opponents[0].Pos)
-				if isValidMove(addIntVec(gameMap.opponents[0].Pos, oppMove), gameMap) {
-					gameMap.opponents[0].Pos = addIntVec(gameMap.opponents[0].Pos, oppMove)
-				}
+			if win.JustPressed(pixelgl.KeyP) {
+				gameMap = playerPickup(gameMap)
+			}
+
+			if win.JustPressed(pixelgl.KeyM) { //iterate over opponents to update their position
+				gameMap = updateOppPos(gameMap)
+/*				for i, opp := range gameMap.opponents {
+					oppMove := oppChase(gameMap.player.Pos, opp.Pos)
+					if isValidMove(addIntVec(opp.Pos, oppMove), true, gameMap) {
+						gameMap.opponents[i].Pos = addIntVec(opp.Pos, oppMove)
+					}
+				}*/
 			}
 
 			//update time based objects or values
@@ -315,9 +370,11 @@ func run() {
 			isGameOver = gameOverCondition(gameMap)
 			//display everything
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center())) //display the map
-			for _, opp := range gameMap.opponents {
-				fmt.Printf("Drawing an opponent using %s at (%d,%d).\n", opp.Spritepath, opp.Pos.X, opp.Pos.Y)
-				opp.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1). Moved(posToVec(opp.Pos)))
+			for _, opp := range gameMap.opponents { //display the opponents
+				opp.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(opp.Pos)))
+			}
+			for _, itm := range gameMap.items { //display the field items
+				itm.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(itm.Pos)))
 			}
 			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos))) //display the player
 
@@ -331,7 +388,6 @@ func run() {
 			//display the end game graphic to window
 			gameMap.sprite.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
 			for _, opp := range gameMap.opponents {
-				fmt.Println("Drawing an opponent.")
 				opp.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1). Moved(posToVec(opp.Pos)))
 			}
 			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos)))
@@ -340,30 +396,6 @@ func run() {
 	}
 }
 	
-func main() {
+func main() { //pixel uses the run function to perform all functions
 	pixelgl.Run(run)
 }
-
-//Functions that will not be used
-/*
-func setPlayerData(toEntity mapObject, fromEntity entity) mapObject {
-	if fromEntity.name != "" {
-		toEntity.player.name = fromEntity.name
-	}
-	if !intVecEqual(fromEntity.pos, intVec{0,0}) {
-		toEntity.player.pos.X = fromEntity.pos.X
-		toEntity.player.pos.Y = fromEntity.pos.Y
-	}
-	if !intVecEqual(fromEntity.facing, intVec{0,0}) {
-		toEntity.player.facing.X = fromEntity.facing.X
-		toEntity.player.facing.Y = fromEntity.facing.Y
-	}
-	if fromEntity.health == -1 {
-		toEntity.player.health = fromEntity.health
-	}
-
-	return toEntity
-}
-
-
-*/
