@@ -73,6 +73,7 @@ type entity struct { //players, items, and NPC
 	DisplacementTime float64
 	Secondspertile float64 `json:"secondspertile"` //movement time between tiles
 	Spritepath string `json:"spritepath"` //the filepath to the sprite image
+	LastMoved float64
 }
 
 func updateDisplacements(gameMap mapObject, dt float64) mapObject { //update the displacement of player and all enemies
@@ -203,6 +204,7 @@ func initializeGame(gameFile string, inMap mapObject) mapObject { //load the ini
 			fmt.Printf("Error loading zombie image data file (%s): %s\n", zom.Spritepath, err)
 			panic(err)
 		}
+		zom.LastMoved = 0
 		zom.Sprite = pixel.NewSprite(zomImage, zomImage.Bounds()) //set zombie sprite
 		outMap.opponents = append(outMap.opponents, zom)
 	}
@@ -328,10 +330,15 @@ func run() {
 				gameMap = playerPickup(gameMap)
 			}
 
-			if win.JustPressed(pixelgl.KeyM) { //iterate over opponents to update their position
-				gameMap = updateOppPos(gameMap)
+			//iterate through opponents, updating their movements
+			for i, zom := range gameMap.opponents {
+				gameMap.opponents[i].LastMoved += dt
+				if zom.LastMoved > 0.5 {
+					gameMap = updateOppPos(gameMap)
+					gameMap.opponents[i].LastMoved = 0.0
+				}
 			}
-
+			
 			//update time based objects or values
 			dt = time.Since(last).Seconds()
 			last = time.Now()
