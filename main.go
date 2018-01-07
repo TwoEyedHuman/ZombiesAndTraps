@@ -12,7 +12,7 @@ import (
 	"io/ioutil"
 	"time"
 	"math/rand"
-	"btlmath"
+	"github.com/TwoEyedHuman/btlmath"
 )
 
 const mapHeight int = 16 //map is mapHeight x mapHeight tiles
@@ -242,7 +242,7 @@ func oppChase(plr intVec, opp intVec) (retVec intVec) { //function that runs the
 func gameOverCondition(gameMap mapObject) (isGameOver bool) { //determines if the game is over or not
 	isGameOver = false
 	for _, opp := range gameMap.opponents {
-		if intVecEqual(gameMap.player.Pos, opp.Pos) { //if an opponent occupies same space as player, then game is over
+		if intVecEqual(gameMap.player.Pos, addIntVec(opp.Pos, opp.Facing)) { //if an opponent occupies same space as player, then game is over
 			isGameOver = true
 		}
 	}
@@ -280,6 +280,7 @@ func updateOppPos(gameMap mapObject) (returnMap mapObject) { //iterate over all 
 		oppMove := oppChase(gameMap.player.Pos, opp.Pos)
 		if isValidMove(addIntVec(opp.Pos, oppMove), true, gameMap) {
 			gameMap.opponents[i].Pos = addIntVec(opp.Pos, oppMove)
+			gameMap.opponents[i].Facing = oppMove
 		}
 	}
 	returnMap = gameMap
@@ -304,6 +305,14 @@ func run() {
 
 	//Initialize items, zombies, player
 	isGameOver := false //condition on if player won/lost
+
+	//Load the game over sprite
+	goImage, err := loadPicture("Sprites/pointinghand.png")
+	if err != nil {
+		fmt.Printf("Trouble loading gameover image: %s\n", err)
+		panic(err)
+	}
+	gameoverSprite := pixel.NewSprite(goImage, goImage.Bounds())
 
 	last := time.Now()
 	dt := time.Since(last).Seconds()
@@ -356,7 +365,7 @@ func run() {
 			}
 			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos))) //display the player
 
-			if win.Pressed(pixelgl.KeyN) { //check if the menu button is pressed and display everything in the backpack if so
+			if win.Pressed(pixelgl.KeyM) { //check if the menu button is pressed and display everything in the backpack if so
 				spaceDiff := pixel.Vec{float64(0), float64(0)}
 				for _, itm := range gameMap.player.Pack {
 					itm.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center().Add(spaceDiff)))
@@ -370,7 +379,11 @@ func run() {
 			for _, opp := range gameMap.opponents {
 				opp.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1). Moved(posToVec(opp.Pos)))
 			}
+			for _, itm := range gameMap.items { //display the field items
+				itm.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(itm.Pos)))
+			}
 			gameMap.player.Sprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 1).Moved(posToVec(gameMap.player.Pos)))
+			gameoverSprite.Draw(win, pixel.IM.Scaled(pixel.ZV, 4).Moved(win.Bounds().Center()))
 			win.Update()
 		}
 	}
